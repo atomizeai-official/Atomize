@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atomize - Company Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Inter & Cairo (for Arabic text) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        arabic: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: '#3b82f6', brandHover: '#2563eb',
+                        darkBg: '#0f172a', sidebarBg: '#1e293b',
+                        contentBg: '#f8fafc', textMuted: '#64748b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .arabic-text { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="flex h-screen text-slate-800 overflow-hidden">
+
+    <!-- 1. SIDEBAR -->
+    <aside class="w-64 bg-sidebarBg text-white flex flex-col h-full shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-white/10">
+            <span id="sidebar-company-name" class="text-lg font-bold tracking-wide truncate">Loading...</span>
+        </div>
+        
+        <nav class="flex-1 px-4 py-6 space-y-1">
+            <a href="#" class="flex items-center px-3 py-2.5 bg-slate-800 rounded-lg text-white">
+                <svg class="w-5 h-5 mr-3 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                Overview
+            </a>
+            <a href="#" class="flex items-center px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                Sales Reps
+            </a>
+            <a href="#" class="flex items-center px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                Campaigns
+            </a>
+        </nav>
+        
+        <div class="px-4 py-4 border-t border-white/10">
+            <button id="logout-btn" class="flex items-center w-full px-3 py-2.5 text-red-400 hover:text-red-300 hover:bg-slate-800 rounded-lg transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-full overflow-y-auto">
+        
+        <!-- Header -->
+        <header class="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 shrink-0">
+            <h1 class="text-xl font-bold text-slate-800">Manager Dashboard</h1>
+            <div class="flex items-center text-sm font-medium text-slate-500">
+                <span id="last-updated" class="mr-2">Updating...</span>
+                <div class="w-2 h-2 rounded-full bg-brand animate-pulse"></div>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-8">
+            
+            <!-- 2. STATS CARDS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- Messages Sent Today -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-t-4 border-t-blue-500">
+                    <h3 class="text-sm font-semibold text-textMuted arabic-text mb-2">الرسائل المرسلة اليوم</h3>
+                    <div class="flex items-end justify-between">
+                        <span id="stat-sent-today" class="text-3xl font-bold text-slate-900">-</span>
+                        <span class="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded">Sent</span>
+                    </div>
+                </div>
+
+                <!-- Success Rate % -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-t-4 border-t-green-500">
+                    <h3 class="text-sm font-semibold text-textMuted arabic-text mb-2">نسبة النجاح</h3>
+                    <div class="flex items-end justify-between">
+                        <span id="stat-success-rate" class="text-3xl font-bold text-slate-900">-%</span>
+                        <span class="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded">Success</span>
+                    </div>
+                </div>
+
+                <!-- Failed Messages -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-t-4 border-t-red-500">
+                    <h3 class="text-sm font-semibold text-textMuted arabic-text mb-2">الرسائل الفاشلة</h3>
+                    <div class="flex items-end justify-between">
+                        <span id="stat-failed" class="text-3xl font-bold text-slate-900">-</span>
+                        <span class="text-xs text-red-600 font-medium bg-red-50 px-2 py-0.5 rounded">Failed</span>
+                    </div>
+                </div>
+
+                <!-- Pending Messages -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-t-4 border-t-orange-400">
+                    <h3 class="text-sm font-semibold text-textMuted arabic-text mb-2">قيد الانتظار</h3>
+                    <div class="flex items-end justify-between">
+                        <span id="stat-pending" class="text-3xl font-bold text-slate-900">-</span>
+                        <span class="text-xs text-orange-600 font-medium bg-orange-50 px-2 py-0.5 rounded">Queue</span>
+                    </div>
+                </div>
+
+                <!-- Active Campaigns -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-t-4 border-t-purple-500">
+                    <h3 class="text-sm font-semibold text-textMuted arabic-text mb-2">الحملات النشطة</h3>
+                    <div class="flex items-end justify-between">
+                        <span id="stat-active-campaigns" class="text-3xl font-bold text-slate-900">-</span>
+                        <span class="text-xs text-purple-600 font-medium bg-purple-50 px-2 py-0.5 rounded">Running</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHAT AREA & TABLES GRID -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- 5. CHART -->
+                <div class="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4">7-Day Activity</h2>
+                    <div class="flex-1 w-full h-64 relative">
+                        <canvas id="messagesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 3. SALES REPS PERFORMANCE -->
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="px-6 py-4 border-b border-slate-200">
+                        <h2 class="text-lg font-bold text-slate-800">Sales Reps Performance</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                    <th class="px-6 py-3">Sales Rep Name</th>
+                                    <th class="px-6 py-3">Sent Today</th>
+                                    <th class="px-6 py-3">Total Sent</th>
+                                    <th class="px-6 py-3">Failed</th>
+                                    <th class="px-6 py-3">Active Campaigns</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reps-table-body" class="divide-y divide-slate-100 text-sm">
+                                <tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Loading data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. CAMPAIGNS OVERVIEW -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200">
+                    <h2 class="text-lg font-bold text-slate-800">Campaigns Overview</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                <th class="px-6 py-3">Campaign Name</th>
+                                <th class="px-6 py-3">Sales Rep</th>
+                                <th class="px-6 py-3">Status</th>
+                                <th class="px-6 py-3">Sent</th>
+                                <th class="px-6 py-3">Failed / Pending</th>
+                                <th class="px-6 py-3">Created Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="campaigns-table-body" class="divide-y divide-slate-100 text-sm">
+                            <tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">Loading data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- 1. CONFIGURATION ---
+        const SUPABASE_URL = 'http://supabasekong-p74g1zief50q6k19s0ogr724.34.159.51.174.sslip.io';
+        const SUPABASE_ANON_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3NjA4Mjc0MCwiZXhwIjo0OTMxNzU2MzQwLCJyb2xlIjoiYW5vbiJ9.JrHvFxlgg0DLAeXf--2wvgjfFyIwkRsoRof2pjgGbZ0';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- 2. GLOBAL STATE ---
+        let currentCompanyId = null;
+        let chartInstance = null;
+
+        // --- 3. DOM ELEMENTS ---
+        const els = {
+            companyName: document.getElementById('sidebar-company-name'),
+            lastUpdated: document.getElementById('last-updated'),
+            
+            sSentToday: document.getElementById('stat-sent-today'),
+            sSuccessRate: document.getElementById('stat-success-rate'),
+            sFailed: document.getElementById('stat-failed'),
+            sPending: document.getElementById('stat-pending'),
+            sActiveCamp: document.getElementById('stat-active-campaigns'),
+
+            repsTable: document.getElementById('reps-table-body'),
+            campTable: document.getElementById('campaigns-table-body')
+        };
+
+        // --- 4. INIT ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Get Auth User
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                if (authError || !user) throw new Error("Not authenticated");
+
+                // Get Custom User Data to find company_id
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('company_id, companies!inner(name)')
+                    .eq('id', user.id)
+                    .single();
+
+                if (userError || !userData) throw userError || new Error("User record not found");
+                
+                currentCompanyId = userData.company_id;
+                els.companyName.textContent = userData.companies.name;
+
+                // Initial fetch
+                await fetchDashboardData();
+
+                // Auto-refresh every 60 seconds
+                setInterval(fetchDashboardData, 60000);
+
+            } catch (err) {
+                console.error(err);
+                if(err.message === "Not authenticated") {
+                    window.location.href = '/index.html'; // redirect if unauth
+                }
+            }
+        });
+
+        // --- 5. LOGOUT LOGIC ---
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            window.location.href = '/index.html';
+        });
+
+        // --- 6. DATA FETCHING ---
+        async function fetchDashboardData() {
+            if(!currentCompanyId) return;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+            const sevenDaysStr = sevenDaysAgo.toISOString().split('T')[0];
+
+            try {
+                // Fetch A: Campaigns (with the full_name of the sales rep)
+                const { data: campaigns, error: campErr } = await supabase
+                    .from('campaigns')
+                    .select(`
+                        *,
+                        users!campaigns_created_by_fkey(id, full_name)
+                    `)
+                    .eq('company_id', currentCompanyId)
+                    .order('created_at', { ascending: false });
+
+                if (campErr) console.error(campErr);
+
+                // Fetch B: Stats Daily for the last 7 days
+                const { data: statsRaw, error: statsErr } = await supabase
+                    .from('stats_daily')
+                    .select('*')
+                    .eq('company_id', currentCompanyId)
+                    .gte('stat_date', sevenDaysStr);
+                
+                if (statsErr) console.error(statsErr);
+
+                // Process Stats Cards (For Today)
+                let todaySent = 0, todayFailed = 0, todayPending = 0;
+                let totalCurrentSent = 0; // for history/all
+                let activeCampCount = 0;
+
+                const todayStats = statsRaw.filter(s => s.stat_date === todayStr);
+                todayStats.forEach(s => {
+                    todaySent += (s.sent_count || 0);
+                    todayFailed += (s.failed_count || 0);
+                    todayPending += (s.pending_count || 0);
+                });
+
+                campaigns.forEach(c => {
+                    if (c.status === 'running') activeCampCount++;
+                });
+
+                // Calculate success rate today
+                const totalAttemptedToday = todaySent + todayFailed;
+                const successRate = totalAttemptedToday === 0 ? 0 : Math.round((todaySent / totalAttemptedToday) * 100);
+
+                // Update DOM Stats
+                els.sSentToday.textContent = todaySent.toLocaleString();
+                els.sFailed.textContent = todayFailed.toLocaleString();
+                els.sPending.textContent = todayPending.toLocaleString();
+                els.sActiveCamp.textContent = activeCampCount;
+                els.sSuccessRate.textContent = successRate + '%';
+
+                // Process Sales Reps Table
+                renderSalesRepsTable(todayStats, statsRaw, campaigns);
+
+                // Process Campaigns Table
+                renderCampaignsTable(campaigns, statsRaw);
+
+                // Process Chart
+                renderChart(statsRaw, sevenDaysAgo);
+
+                // Make timestamp
+                const now = new Date();
+                els.lastUpdated.textContent = 'Updated: ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            } catch (error) {
+                console.error("Dashboard error:", error);
+            }
+        }
+
+        // --- 7. RENDERING FUNCTIONS ---
+
+        function renderSalesRepsTable(todayStats, allStats, campaigns) {
+            // Group by rep
+            const repMap = {}; 
+            
+            // Collect reps from campaigns to ensure we have their names
+            campaigns.forEach(c => {
+                const rep = c.users;
+                if (!rep) return;
+                if (!repMap[rep.id]) {
+                    repMap[rep.id] = { name: rep.full_name, sentToday: 0, totalSent: 0, failedTotal: 0, activeCamps: 0 };
+                }
+            });
+
+            // Map today's stats
+            todayStats.forEach(s => {
+                if(repMap[s.sales_rep_id]) {
+                    repMap[s.sales_rep_id].sentToday += (s.sent_count || 0);
+                }
+            });
+
+            // Map all stats
+            allStats.forEach(s => {
+                if(repMap[s.sales_rep_id]) {
+                    repMap[s.sales_rep_id].totalSent += (s.sent_count || 0);
+                    repMap[s.sales_rep_id].failedTotal += (s.failed_count || 0);
+                }
+            });
+
+            // Map active campaigns
+            campaigns.forEach(c => {
+                if(c.status === 'running' && c.users && repMap[c.users.id]) {
+                    repMap[c.users.id].activeCamps += 1;
+                }
+            });
+
+            els.repsTable.innerHTML = '';
+            const repRows = Object.values(repMap);
+
+            if (repRows.length === 0) {
+                els.repsTable.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-slate-400">No active reps found.</td></tr>';
+                return;
+            }
+
+            repRows.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-slate-900">${r.name}</td>
+                    <td class="px-6 py-4 text-brand font-semibold">${r.sentToday}</td>
+                    <td class="px-6 py-4">${r.totalSent}</td>
+                    <td class="px-6 py-4 text-red-500">${r.failedTotal}</td>
+                    <td class="px-6 py-4"><span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium text-xs">${r.activeCamps}</span></td>
+                `;
+                els.repsTable.appendChild(tr);
+            });
+        }
+
+        function renderCampaignsTable(campaigns, allStats) {
+            els.campTable.innerHTML = '';
+
+            if (!campaigns || campaigns.length === 0) {
+                els.campTable.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-slate-400">No campaigns found.</td></tr>';
+                return;
+            }
+
+            campaigns.forEach(c => {
+                const repName = c.users ? c.users.full_name : 'Unknown';
+                
+                // Aggregate stats for this specific campaign from stats_daily
+                let tSent = 0, tFail = 0, tPend = 0;
+                allStats.filter(s => s.campaign_id === c.id).forEach(s => {
+                    tSent += (s.sent_count || 0);
+                    tFail += (s.failed_count || 0);
+                    tPend += (s.pending_count || 0);
+                });
+
+                let statusBadge = '';
+                if(c.status === 'running') statusBadge = '<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">Running</span>';
+                else if(c.status === 'paused') statusBadge = '<span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs font-semibold">Paused</span>';
+                else if(c.status === 'completed') statusBadge = '<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-semibold">Completed</span>';
+                else statusBadge = '<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-semibold capitalize">'+c.status+'</span>';
+
+                const dateCreatedStr = new Date(c.created_at).toLocaleDateString();
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-slate-900">${c.name}</td>
+                    <td class="px-6 py-4">${repName}</td>
+                    <td class="px-6 py-4">${statusBadge}</td>
+                    <td class="px-6 py-4 text-brand font-medium">${tSent}</td>
+                    <td class="px-6 py-4"><span class="text-red-500">${tFail}</span> / <span class="text-orange-500">${tPend}</span></td>
+                    <td class="px-6 py-4 text-slate-500">${dateCreatedStr}</td>
+                `;
+                els.campTable.appendChild(tr);
+            });
+        }
+
+        function renderChart(allStats, startDateObj) {
+            const labels = [];
+            const dataCounts = [];
+            
+            // Build skeleton for last 7 days
+            for(let i=0; i<7; i++) {
+                let d = new Date(startDateObj);
+                d.setDate(d.getDate() + i);
+                const dateStr = d.toISOString().split('T')[0];
+                const displayLabel = d.toLocaleDateString([], {month: 'short', day: 'numeric'});
+                
+                labels.push(displayLabel);
+                
+                // Sum sent_count for this date
+                const itemsStr = allStats.filter(s => s.stat_date === dateStr);
+                const sumSent = itemsStr.reduce((acc, curr) => acc + (curr.sent_count || 0), 0);
+                dataCounts.push(sumSent);
+            }
+
+            const ctx = document.getElementById('messagesChart').getContext('2d');
+
+            if (chartInstance) {
+                chartInstance.data.labels = labels;
+                chartInstance.data.datasets[0].data = dataCounts;
+                chartInstance.update();
+            } else {
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Messages Sent',
+                            data: dataCounts,
+                            backgroundColor: 'rgba(59, 130, 246, 0.8)', // Tailwind brand blue
+                            borderRadius: 6,
+                            barPercentage: 0.6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                border: { dash: [4, 4] },
+                                grid: { color: '#f1f5f9' }, // slate-100
+                                ticks: { precision: 0 } // No decimals
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
