@@ -168,11 +168,11 @@
                 // Step C: Redirect based on role
                 const role = userData.role;
                 if (role === 'super_admin') {
-                    window.location.href = '/super-admin/dashboard';
+                    window.location.href = 'super-admin-dashboard.html';
                 } else if (role === 'company_manager') {
-                    window.location.href = '/manager/dashboard';
+                    window.location.href = 'manager-dashboard.html';
                 } else if (role === 'sales_rep') {
-                    window.location.href = '/sales/dashboard';
+                    window.location.href = 'sales-dashboard.html';
                 } else {
                     throw new Error('Unknown role: ' + role);
                 }
